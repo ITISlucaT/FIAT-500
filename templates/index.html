@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fiat 500 Price Predictor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        glass: {
+                            dark: 'rgba(15, 23, 42, 0.8)',
+                            blue: 'rgba(59, 130, 246, 0.7)',
+                            light: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        primary: {
+                            50: '#e6f1fe',
+                            100: '#cce3fd',
+                            200: '#99c7fb',
+                            300: '#66abf9',
+                            400: '#338ff7',
+                            500: '#0073f5',
+                            600: '#005cc4',
+                            700: '#004593',
+                            800: '#002e62',
+                            900: '#001731',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        glass: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .glass {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .glass-blue {
+            background: rgba(59, 130, 246, 0.2);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+        
+        .glass-light {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .car-dashboard {
+            transition: all 0.5s ease;
+        }
+        
+        .histogram-bar {
+            transition: height 1s ease-out;
+        }
+        
+        .price-reveal {
+            animation: fadeInUp 0.8s ease forwards;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .car-icon {
+            transition: all 0.5s ease;
+        }
+        
+        .car-building {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.7; }
+            50% { opacity: 1; }
+            100% { opacity: 0.7; }
+        }
+        
+        .model-symbol {
+            transition: all 0.5s ease;
+            opacity: 0;
+            transform: scale(0.8);
+        }
+        
+        .model-symbol.active {
+            opacity: 1;
+            transform: scale(1);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 font-sans bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900">
+    <div class="w-full max-w-6xl glass rounded-2xl shadow-glass p-6 md:p-8 flex flex-col lg:flex-row gap-8">
+        <!-- Form Section -->
+        <div class="w-full lg:w-1/2">
+            <div class="text-center mb-8">
+                <h1 class="text-2xl md:text-3xl font-bold text-white">Fiat 500 Price Predictor</h1>
+                <p class="text-blue-200 mt-2">Enter your vehicle details to get an estimated price</p>
+            </div>
+            
+            <form id="priceForm" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-2">
+                        <label for="model" class="block text-sm font-medium text-blue-100">Model</label>
+                        <select id="model" name="model" required class="w-full px-4 py-2.5 glass-light text-white border-0 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition-all duration-200">
+                            <option value="" disabled selected>Select model</option>
+                            <option value="lounge">Lounge</option>
+                            <option value="pop">Pop</option>
+                            <option value="sport">Sport</option>
+                            <option value="star">Star</option>
+                        </select>
+                        <p class="text-red-400 text-xs mt-1 hidden" id="model-error">Please select a model</p>
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <label for="engine_power" class="block text-sm font-medium text-blue-100">Engine Power (HP)</label>
+                        <input type="number" id="engine_power" name="engine_power" min="1" step="1" required class="w-full px-4 py-2.5 glass-light text-white border-0 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition-all duration-200">
+                        <p class="text-red-400 text-xs mt-1 hidden" id="engine-error">Please enter a valid engine power</p>
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <label for="transmission" class="block text-sm font-medium text-blue-100">Transmission</label>
+                        <select id="transmission" name="transmission" required class="w-full px-4 py-2.5 glass-light text-white border-0 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition-all duration-200">
+                            <option value="" disabled selected>Select transmission</option>
+                            <option value="automatic">Automatic</option>
+                            <option value="manual">Manual</option>
+                        </select>
+                        <p class="text-red-400 text-xs mt-1 hidden" id="transmission-error">Please select a transmission type</p>
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <label for="age_in_days" class="block text-sm font-medium text-blue-100">Age (in days)</label>
+                        <input type="number" id="age_in_days" name="age_in_days" min="0" step="1" required class="w-full px-4 py-2.5 glass-light text-white border-0 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition-all duration-200">
+                        <p class="text-red-400 text-xs mt-1 hidden" id="age-error">Please enter a valid age in days</p>
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <label for="km" class="block text-sm font-medium text-blue-100">Kilometers</label>
+                        <input type="number" id="km" name="km" min="0" step="1" required class="w-full px-4 py-2.5 glass-light text-white border-0 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition-all duration-200">
+                        <p class="text-red-400 text-xs mt-1 hidden" id="km-error">Please enter a valid kilometer value</p>
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <label for="previous_owners" class="block text-sm font-medium text-blue-100">Previous Owners</label>
+                        <input type="number" id="previous_owners" name="previous_owners" min="0" step="1" required class="w-full px-4 py-2.5 glass-light text-white border-0 rounded-lg focus:ring-primary-500 focus:border-primary-500 transition-all duration-200">
+                        <p class="text-red-400 text-xs mt-1 hidden" id="owners-error">Please enter a valid number of previous owners</p>
+                    </div>
+                </div>
+                
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 mt-8 flex items-center justify-center">
+                    <span>Predict Price</span>
+                </button>
+            </form>
+            
+            <div class="mt-8 hidden" id="loader">
+                <div class="flex flex-col items-center justify-center space-y-3">
+                    <div class="w-10 h-10 border-4 border-blue-900 border-t-blue-400 rounded-full animate-spin"></div>
+                    <p class="text-blue-200">Calculating price...</p>
+                </div>
+            </div>
+            
+            <div class="mt-8 hidden glass-blue rounded-lg p-6 text-center" id="result">
+                <p class="text-blue-100 text-lg">Estimated Price:</p>
+                <div class="price-reveal">
+                    <p class="text-4xl font-bold text-white mt-2" id="price">€0</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Dashboard Section -->
+        <div class="w-full lg:w-1/2 glass-blue rounded-xl p-6 car-dashboard">
+            <h2 class="text-xl font-semibold text-white mb-4">Car Visualization</h2>
+            
+            <!-- Car Building Visualization -->
+            <div class="relative h-[250px] mb-6">
+                <div class="sketchfab-embed-wrapper h-full rounded-lg overflow-hidden">
+                    <iframe 
+                        title="Fiat 500" 
+                        class="w-full h-full"
+                        frameborder="0" 
+                        allowfullscreen 
+                        mozallowfullscreen="true" 
+                        webkitallowfullscreen="true" 
+                        allow="autoplay; fullscreen; xr-spatial-tracking" 
+                        xr-spatial-tracking 
+                        execution-while-out-of-viewport 
+                        execution-while-not-rendered 
+                        web-share 
+                        src="https://sketchfab.com/models/4a59726d500643f78d97a468efa5d868/embed?autospin=1&autostart=1&ui_theme=dark&camera=0">
+                    </iframe>
+                </div>
+                
+                <div id="lounge-symbol" class="model-symbol absolute top-4 right-4 z-10">
+                    <svg class="w-16 h-16" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="50" cy="50" r="45" stroke="#3b82f6" stroke-width="2" fill="rgba(59, 130, 246, 0.2)"/>
+                        <!-- Sofa icon -->
+                        <path d="M25,60 H75 V70 H25 V60 Z" stroke="#3b82f6" stroke-width="2" fill="rgba(59, 130, 246, 0.4)"/>
+                        <path d="M30,50 V60 M70,50 V60" stroke="#3b82f6" stroke-width="2"/>
+                        <path d="M20,50 H80" stroke="#3b82f6" stroke-width="3"/>
+                        <path d="M25,40 H75 Q80,40 80,45 V50 H20 V45 Q20,40 25,40" stroke="#3b82f6" stroke-width="2" fill="rgba(59, 130, 246, 0.2)"/>
+                    </svg>
+                </div>
+                
+                <div id="pop-symbol" class="model-symbol absolute top-4 right-4 z-10">
+                    <svg class="w-16 h-16" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="50" cy="50" r="45" stroke="#3b82f6" stroke-width="2" fill="rgba(59, 130, 246, 0.2)"/>
+                        <!-- Cloud icon -->
+                        <path d="M30,55 Q20,55 20,45 Q20,35 30,35 Q30,25 40,25 Q50,25 50,35 Q60,25 70,35 Q80,35 80,45 Q80,55 70,55 Q70,65 50,65 Q30,65 30,55" 
+                              stroke="#3b82f6" stroke-width="2" fill="rgba(59, 130, 246, 0.4)"/>
+                    </svg>
+                </div>
+                
+                <div id="sport-symbol" class="model-symbol absolute top-4 right-4 z-10">
+                    <svg class="w-16 h-16" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="50" cy="50" r="45" stroke="#3b82f6" stroke-width="2" fill="rgba(59, 130, 246, 0.2)"/>
+                        <!-- Racing flag icon -->
+                        <path d="M30,20 V80" stroke="#3b82f6" stroke-width="3"/>
+                        <path d="M30,25 H70 V35 H30 V45 H70 V55 H30 V65 H70" 
+                              stroke="#3b82f6" stroke-width="2" fill="none"/>
+                        <pattern id="checkerboard" patternUnits="userSpaceOnUse" width="10" height="10">
+                            <rect width="5" height="5" fill="rgba(59, 130, 246, 0.4)"/>
+                            <rect x="5" y="5" width="5" height="5" fill="rgba(59, 130, 246, 0.4)"/>
+                        </pattern>
+                        <path d="M30,25 H70 V35 H30 V45 H70 V55 H30 V65 H70" fill="url(#checkerboard)"/>
+                    </svg>
+                </div>
+                
+                <div id="star-symbol" class="model-symbol absolute top-4 right-4 z-10">
+                    <svg class="w-16 h-16" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="50" cy="50" r="45" stroke="#3b82f6" stroke-width="2" fill="rgba(59, 130, 246, 0.2)"/>
+                        <!-- Star icon -->
+                        <path d="M50,20 L61,44 L87,44 L66,60 L74,84 L50,70 L26,84 L34,60 L13,44 L39,44 Z" 
+                              stroke="#3b82f6" stroke-width="2" fill="rgba(59, 130, 246, 0.4)"/>
+                    </svg>
+                </div>
+            </div>
+            
+            <!-- Specifications Histogram -->
+            <div class="mb-4">
+                <h3 class="text-lg font-medium text-white mb-3">Car Specifications</h3>
+                <div class="grid grid-cols-4 gap-2">
+                    <!-- Power Bar -->
+                    <div class="flex flex-col items-center">
+                        <div class="w-full bg-blue-900/50 rounded-t-lg overflow-hidden h-24 relative">
+                            <div id="power-bar" class="histogram-bar bg-blue-500 w-full absolute bottom-0 transition-all duration-500"></div>
+                            <div class="absolute top-0 right-0 left-0 px-1 text-xs text-blue-200">500 HP</div>
+                            <div class="absolute bottom-0 right-0 left-0 px-1 text-xs text-blue-200">0 HP</div>
+                        </div>
+                        <span class="text-xs text-blue-200 mt-1">Power</span>
+                    </div>
+                    
+                    <!-- Age Bar -->
+                    <div class="flex flex-col items-center">
+                        <div class="w-full bg-blue-900/50 rounded-t-lg overflow-hidden h-24 relative">
+                            <div id="age-bar" class="histogram-bar bg-blue-500 w-full absolute bottom-0 transition-all duration-500"></div>
+                            <div class="absolute top-0 right-0 left-0 px-1 text-xs text-blue-200">10y</div>
+                            <div class="absolute bottom-0 right-0 left-0 px-1 text-xs text-blue-200">0y</div>
+                        </div>
+                        <span class="text-xs text-blue-200 mt-1">Age</span>
+                    </div>
+                    
+                    <!-- KM Bar -->
+                    <div class="flex flex-col items-center">
+                        <div class="w-full bg-blue-900/50 rounded-t-lg overflow-hidden h-24 relative">
+                            <div id="km-bar" class="histogram-bar bg-blue-500 w-full absolute bottom-0 transition-all duration-500"></div>
+                            <div class="absolute top-0 right-0 left-0 px-1 text-xs text-blue-200">300k</div>
+                            <div class="absolute bottom-0 right-0 left-0 px-1 text-xs text-blue-200">0</div>
+                        </div>
+                        <span class="text-xs text-blue-200 mt-1">KM</span>
+                    </div>
+                    
+                    <!-- Owners Icons -->
+                    <div class="flex flex-col items-center">
+                        <div class="w-full bg-blue-900/50 rounded-lg p-2 h-24 flex flex-wrap items-center justify-center gap-1" id="owners-container">
+                            <!-- Owner icons will be added dynamically -->
+                        </div>
+                        <span class="text-xs text-blue-200 mt-1">Owners</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Car Details -->
+            <div class="glass-light rounded-lg p-4">
+                <h3 class="text-lg font-medium text-white mb-2">Selected Configuration</h3>
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="text-sm text-blue-200">
+                        <span class="font-medium">Model:</span> 
+                        <span id="selected-model">-</span>
+                    </div>
+                    <div class="text-sm text-blue-200">
+                        <span class="font-medium">Engine:</span> 
+                        <span id="selected-engine">-</span>
+                    </div>
+                    <div class="text-sm text-blue-200">
+                        <span class="font-medium">Transmission:</span> 
+                        <span id="selected-transmission">-</span>
+                    </div>
+                    <div class="text-sm text-blue-200">
+                        <span class="font-medium">Age:</span> 
+                        <span id="selected-age">-</span>
+                    </div>
+                    <div class="text-sm text-blue-200">
+                        <span class="font-medium">Kilometers:</span> 
+                        <span id="selected-km">-</span>
+                    </div>
+                    <div class="text-sm text-blue-200">
+                        <span class="font-medium">Previous Owners:</span> 
+                        <span id="selected-owners">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('priceForm');
+            const loader = document.getElementById('loader');
+            const result = document.getElementById('result');
+            const priceElement = document.getElementById('price');
+            
+            // Model symbols
+            const modelSymbols = {
+                lounge: document.getElementById('lounge-symbol'),
+                pop: document.getElementById('pop-symbol'),
+                sport: document.getElementById('sport-symbol'),
+                star: document.getElementById('star-symbol')
+            };
+            
+            // Histogram bars
+            const powerBar = document.getElementById('power-bar');
+            const ageBar = document.getElementById('age-bar');
+            const kmBar = document.getElementById('km-bar');
+            const ownersBar = document.getElementById('owners-bar');
+            
+            // Selected configuration display
+            const selectedModel = document.getElementById('selected-model');
+            const selectedEngine = document.getElementById('selected-engine');
+            const selectedTransmission = document.getElementById('selected-transmission');
+            const selectedAge = document.getElementById('selected-age');
+            const selectedKm = document.getElementById('selected-km');
+            const selectedOwners = document.getElementById('selected-owners');
+            
+            // Update dashboard based on form inputs
+            function updateDashboard() {
+                // Update selected configuration
+                selectedModel.textContent = form.model.value ? form.model.value.charAt(0).toUpperCase() + form.model.value.slice(1) : '-';
+                selectedEngine.textContent = form.engine_power.value ? `${form.engine_power.value} HP` : '-';
+                selectedTransmission.textContent = form.transmission.value ? form.transmission.value.charAt(0).toUpperCase() + form.transmission.value.slice(1) : '-';
+                selectedAge.textContent = form.age_in_days.value ? `${Math.round(form.age_in_days.value / 365)} years` : '-';
+                selectedKm.textContent = form.km.value ? `${parseInt(form.km.value).toLocaleString()} km` : '-';
+                selectedOwners.textContent = form.previous_owners.value || '-';
+                
+                // Update model symbol
+                Object.keys(modelSymbols).forEach(model => {
+                    if (model === form.model.value) {
+                        modelSymbols[model].classList.add('active');
+                    } else {
+                        modelSymbols[model].classList.remove('active');
+                    }
+                });
+                
+                // Update histogram bars
+                if (form.engine_power.value) {
+                    const powerHeight = Math.min((parseInt(form.engine_power.value) / 500) * 100, 100);
+                    powerBar.style.height = `${powerHeight}%`;
+                } else {
+                    powerBar.style.height = '0%';
+                }
+                
+                if (form.age_in_days.value) {
+                    const ageHeight = Math.min((parseInt(form.age_in_days.value) / 3650) * 100, 100);
+                    ageBar.style.height = `${ageHeight}%`;
+                } else {
+                    ageBar.style.height = '0%';
+                }
+                
+                if (form.km.value) {
+                    const kmValue = parseInt(form.km.value);
+                    const kmHeight = Math.min((kmValue / 300000) * 100, 100);
+                    kmBar.style.height = `${kmHeight}%`;
+                    
+                    // Update color based on KM value
+                    if (kmValue > 200000) {
+                        kmBar.className = 'histogram-bar bg-red-500 w-full absolute bottom-0 transition-all duration-500';
+                    } else if (kmValue > 150000) {
+                        kmBar.className = 'histogram-bar bg-yellow-500 w-full absolute bottom-0 transition-all duration-500';
+                    } else {
+                        kmBar.className = 'histogram-bar bg-blue-500 w-full absolute bottom-0 transition-all duration-500';
+                    }
+                } else {
+                    kmBar.style.height = '0%';
+                    kmBar.className = 'histogram-bar bg-blue-500 w-full absolute bottom-0 transition-all duration-500';
+                }
+                
+                // Update owners icons
+                const ownersContainer = document.getElementById('owners-container');
+                ownersContainer.innerHTML = '';
+                
+                if (form.previous_owners.value) {
+                    const numOwners = parseInt(form.previous_owners.value);
+                    for (let i = 0; i < numOwners; i++) {
+                        const ownerIcon = document.createElement('div');
+                        ownerIcon.innerHTML = `
+                            <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="12" cy="8" r="4" stroke="#3b82f6" stroke-width="2"/>
+                                <path d="M6,21 A6,6 0 0,1 18,21" stroke="#3b82f6" stroke-width="2"/>
+                            </svg>
+                        `;
+                        ownersContainer.appendChild(ownerIcon);
+                    }
+                }
+            }
+            
+            // Add input event listeners to all form fields
+            form.querySelectorAll('input, select').forEach(input => {
+                input.addEventListener('input', updateDashboard);
+            });
+            
+            // Form validation and submission
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Reset error messages
+                document.querySelectorAll('[id$="-error"]').forEach(elem => {
+                    elem.classList.add('hidden');
+                });
+                
+                // Validate form
+                let isValid = true;
+                
+                // Check model
+                if (!form.model.value) {
+                    document.getElementById('model-error').classList.remove('hidden');
+                    isValid = false;
+                }
+                
+                // Check engine power
+                if (!form.engine_power.value || form.engine_power.value <= 0) {
+                    document.getElementById('engine-error').classList.remove('hidden');
+                    isValid = false;
+                }
+                
+                // Check transmission
+                if (!form.transmission.value) {
+                    document.getElementById('transmission-error').classList.remove('hidden');
+                    isValid = false;
+                }
+                
+                // Check age
+                if (!form.age_in_days.value || form.age_in_days.value < 0) {
+                    document.getElementById('age-error').classList.remove('hidden');
+                    isValid = false;
+                }
+                
+                // Check kilometers
+                if (!form.km.value || form.km.value < 0) {
+                    document.getElementById('km-error').classList.remove('hidden');
+                    isValid = false;
+                }
+                
+                // Check previous owners
+                if (!form.previous_owners.value || form.previous_owners.value < 0) {
+                    document.getElementById('owners-error').classList.remove('hidden');
+                    isValid = false;
+                }
+                
+                if (isValid) {
+                    // Show loader
+                    result.classList.add('hidden');
+                    loader.classList.remove('hidden');
+                    
+                    // Prepare form data
+                    const formData = {
+                        model: form.model.value,
+                        engine_power: parseInt(form.engine_power.value),
+                        transmission: form.transmission.value,
+                        age_in_days: parseInt(form.age_in_days.value),
+                        km: parseInt(form.km.value),
+                        previous_owners: parseInt(form.previous_owners.value)
+                    };
+
+                    const baseUrl = window.location.origin;
+                    const url = baseUrl + '/predict';
+                    
+                    // Send data to backend
+                    fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(formData)
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        // Format the price with € symbol and thousand separators
+                        priceElement.textContent = '€' + data.price.toLocaleString('it-IT', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        });
+                        
+                        // Hide loader and show result with animation
+                        loader.classList.add('hidden');
+                        result.classList.remove('hidden');
+                        
+                        // Reset the animation by removing and adding the class
+                        const priceReveal = document.querySelector('.price-reveal');
+                        priceReveal.style.animation = 'none';
+                        priceReveal.offsetHeight; // Trigger reflow
+                        priceReveal.style.animation = null;
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('An error occurred while predicting the price. Please try again.');
+                        loader.classList.add('hidden');
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+
